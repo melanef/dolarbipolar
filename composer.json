@@ -13,7 +13,6 @@
     ],
     "require": {
         "abraham/twitteroauth": "^1.2",
-        "guzzlehttp/guzzle": "^7.0",
         "ext-json": "*",
         "ext-curl": "*"
     }
