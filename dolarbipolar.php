@@ -14,7 +14,6 @@
 require "vendor/autoload.php";
 
 use Abraham\TwitterOAuth\TwitterOAuth;
-use GuzzleHttp\Client;
 
 const API_URL = 'https://free.currconv.com/api/v7/convert?q=%s&compact=ultra&apiKey=%s';
 const FILE_OPTIONS = './options.json';
@@ -26,14 +25,13 @@ $now = new DateTime('now', new DateTimeZone('America/Sao_Paulo'));
 $options = json_decode(file_get_contents(FILE_OPTIONS), true);
 $lastQuotes = json_decode(file_get_contents(FILE_HISTORY), true);
 
-$client = new Client();
 foreach ($options['currencies'] as $currencySettings) {
     $ch = curl_init(sprintf(API_URL, $currencySettings['currencyApiName'], $options['currencyApiKey']));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $result = curl_exec($ch);
     curl_close($ch);
 
-    $payload = json_decode($response->getBody()->getContents(), true);
+    $payload = json_decode($result, true);
     $quote = $payload[$currencySettings['currencyApiName']];
 
     $lastQuote = null;
