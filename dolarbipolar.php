@@ -56,8 +56,8 @@ foreach ($options['currencies'] as $currencySettings) {
 
     if (!empty($currencySettings['twitterApiKey'])) {
         $connection = new TwitterOAuth(
-            $options['twitterApiKey'],
-            $options['twitterApiSecret'],
+            $currencySettings['consumerApiKey'],
+            $currencySettings['consumerApiSecret'],
             $currencySettings['twitterApiKey'],
             $currencySettings['twitterApiSecret']
         );
