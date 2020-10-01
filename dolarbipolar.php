@@ -28,9 +28,10 @@ $lastQuotes = json_decode(file_get_contents(FILE_HISTORY), true);
 
 $client = new Client();
 foreach ($options['currencies'] as $currencySettings) {
-    $response = $client->get(
-        sprintf(API_URL, $currencySettings['currencyApiName'], $options['currencyApiKey'])
-    );
+    $ch = curl_init(sprintf(API_URL, $currencySettings['currencyApiName'], $options['currencyApiKey']));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $result = curl_exec($ch);
+    curl_close($ch);
 
     $payload = json_decode($response->getBody()->getContents(), true);
     $quote = $payload[$currencySettings['currencyApiName']];
