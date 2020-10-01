@@ -40,7 +40,18 @@ foreach ($options['currencies'] as $currencySettings) {
         $lastQuote = $lastQuotes[$currencySettings['currencyApiName']];
     }
 
-    if ($quote === $lastQuote) {
+    $roundedQuote = round($quote, 2, PHP_ROUND_HALF_DOWN);
+    $roundedLastQuote = round($lastQuote, 2, PHP_ROUND_HALF_DOWN);
+
+    if ($roundedQuote === $roundedLastQuote) {
+        print sprintf(
+            '%s - %s - Sem alteração - %s - %s%s',
+            $now->format('Y-m-d H:i:s'),
+            $currencySettings['currencyApiName'],
+            $lastQuote,
+            $quote,
+            PHP_EOL
+        );
         continue;
     }
 
@@ -51,7 +62,7 @@ foreach ($options['currencies'] as $currencySettings) {
     $status = str_replace('{name}', $currencySettings['name'], $status);
     $status = str_replace('{subiu/caiu}', $variance, $status);
     $status = str_replace('{emoji}', $emoji, $status);
-    $status = str_replace('{cotacao}', number_format($quote, 2, ',',  '.'), $status);
+    $status = str_replace('{cotacao}', number_format($roundedQuote, 2, ',',  '.'), $status);
     $status = str_replace('{data-hora}', $now->format('H:i'), $status);
 
     if (!empty($currencySettings['twitterApiKey'])) {
