@@ -6,33 +6,9 @@ namespace Composer\Autoload;
 
 class ComposerStaticInit80e07c35734cfe2b5149a3d36963949c
 {
-    public static $prefixLengthsPsr4 = array (
-        'C' => 
-        array (
-            'Composer\\CaBundle\\' => 18,
-        ),
-        'A' => 
-        array (
-            'Abraham\\TwitterOAuth\\' => 21,
-        ),
-    );
-
-    public static $prefixDirsPsr4 = array (
-        'Composer\\CaBundle\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/composer/ca-bundle/src',
-        ),
-        'Abraham\\TwitterOAuth\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/abraham/twitteroauth/src',
-        ),
-    );
-
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit80e07c35734cfe2b5149a3d36963949c::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit80e07c35734cfe2b5149a3d36963949c::$prefixDirsPsr4;
 
         }, null, ClassLoader::class);
     }
