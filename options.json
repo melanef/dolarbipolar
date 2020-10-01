@@ -1,15 +1,19 @@
 {
   "twitterStatusFormat": "{name} {subiu/caiu} {emoji} - R$ {cotacao} às {data-hora}",
   "currencyApiKey": "82a8307420c94bb7f1b5",
+  "twitterApiKey": "CONSUMER_KEY",
+  "twitterApiSecret": "CONSUMER_SECRET",
   "currencies": [
     {
       "name": "Dólar",
-      "twitterApiKey": "",
+      "twitterApiKey": "ACCESS_TOKEN",
+      "twitterApiSecret": "ACCESS_TOKEN_SECRET",
       "currencyApiName": "USD_BRL"
     },
     {
       "name": "Libra",
       "twitterApiKey": "",
+      "twitterApiSecret": "",
       "currencyApiName": "GBP_BRL"
     }
   ]

@@ -22,9 +22,6 @@ const FILE_HISTORY = './history.json';
 const INCREASE = 'subiu';
 const DECREASE = 'caiu';
 
-$access_token = 'ACCESS_TOKEN';
-$access_token_secret = 'ACCESS_TOKEN_SECRET';
-
 $now = new DateTime('now', new DateTimeZone('America/Sao_Paulo'));
 $options = json_decode(file_get_contents(FILE_OPTIONS), true);
 $lastQuotes = json_decode(file_get_contents(FILE_HISTORY), true);
@@ -58,16 +55,23 @@ foreach ($options['currencies'] as $currencySettings) {
     $status = str_replace('{data-hora}', $now->format('H:i'), $status);
 
     if (!empty($currencySettings['twitterApiKey'])) {
-        $connection = new TwitterOAuth('CONSUMER_KEY', 'CONSUMER_SECRET', $access_token, $access_token_secret);
+        $connection = new TwitterOAuth(
+            $options['twitterApiKey'],
+            $options['twitterApiSecret'],
+            $currencySettings['twitterApiKey'],
+            $currencySettings['twitterApiSecret']
+        );
         $statusUpdate = $connection->post("statuses/update", array("status" => $status));
 
         if ($connection->getLastHttpCode() == 200) {
             $lastQuotes[$currencySettings['currencyApiName']] = $quote;
+        } else {
+            print sprintf("Erro: %s%s", json_encode($connection->getLastBody()), PHP_EOL);
         }
     }
 
     print sprintf(
-        '%s - %s - %s%s',
+        '%s - %s - Corpo: "%s"%s',
         $now->format('Y-m-d H:i:s'),
         $currencySettings['currencyApiName'],
         $status,
