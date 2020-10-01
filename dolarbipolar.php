@@ -1,71 +1,78 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: mariozuany
+ * User: Mario Zuany Neto <mariozuany>
  * Date: 05/03/15
  * Time: 19:19
+ *
+ * Updated by:
+ * User: Amauri de Melo Junior <melanef>
+ * Date: 01/10/2020
+ * Time: 02:10
  */
 
-namespace Abraham\TwitterOAuth\TwitterOAuth;
-use Abraham\TwitterOAuth\TwitterOAuth;
+require "vendor/autoload.php";
 
-require "twitteroauth/autoload.php";
+use Abraham\TwitterOAuth\TwitterOAuth;
+use GuzzleHttp\Client;
+
+const API_URL = 'https://free.currconv.com/api/v7/convert?q=%s&compact=ultra&apiKey=%s';
+const FILE_OPTIONS = './options.json';
+const FILE_HISTORY = './history.json';
+const INCREASE = 'subiu';
+const DECREASE = 'caiu';
 
 $access_token = 'ACCESS_TOKEN';
 $access_token_secret = 'ACCESS_TOKEN_SECRET';
-$connection = new TwitterOAuth('CONSUMER_KEY', 'CONSUMER_SECRET', $access_token, $access_token_secret);
 
-date_default_timezone_set('America/Sao_Paulo');
+$now = new DateTime('now', new DateTimeZone('America/Sao_Paulo'));
+$options = json_decode(file_get_contents(FILE_OPTIONS), true);
+$lastQuotes = json_decode(file_get_contents(FILE_HISTORY), true);
 
-$url = "http://cotacoes.economia.uol.com.br/cambioJSONChart.html?type=d&cod=BRL&mt=off";
-$ch = curl_init($url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$result = curl_exec($ch);
-curl_close($ch);
+$client = new Client();
+foreach ($options['currencies'] as $currencySettings) {
+    $response = $client->get(
+        sprintf(API_URL, $currencySettings['currencyApiName'], $options['currencyApiKey'])
+    );
 
-// Captura cotação do UOL transforma JSON em array
-$cotacoes_uol = json_decode($result, true);
-$cotacao_dolar_uol = $cotacoes_uol[1];
-$cotacao_dolar_uol_lenght = count($cotacao_dolar_uol);
+    $payload = json_decode($response->getBody()->getContents(), true);
+    $quote = $payload[$currencySettings['currencyApiName']];
 
-// Formata cotacao substituindo ponto por virgula e restringindo a duas casas decimais e formata a data
-$cotacao_atual = $cotacao_dolar_uol[$cotacao_dolar_uol_lenght-1]['ask'];
-$cotacao_atual_duas_casas_decimais = substr_replace($cotacao_atual, '', 4);
-$cotacao_atual_com_virgula = str_replace(".", ",", $cotacao_atual_duas_casas_decimais);
-$cotacao_atual_data = date('H:i', $cotacao_dolar_uol[$cotacao_dolar_uol_lenght-1]['ts']/1000);
+    $lastQuote = null;
+    if (!empty($lastQuotes[$currencySettings['currencyApiName']])) {
+        $lastQuote = $lastQuotes[$currencySettings['currencyApiName']];
+    }
 
-// Pega a última cotacao do arquivo cotacoes.txt
-$cotacoes_salvas = file_get_contents("cotacoes_real.txt");
-$array_cotacoes_salvas = array_reverse(explode("\n", $cotacoes_salvas));
-$ultima_cotacao = $cotacao_atual_com_virgula;
-$cotacao_anterior = $array_cotacoes_salvas[1];
+    if ($quote === $lastQuote) {
+        continue;
+    }
 
+    $variance = ($quote > $lastQuote) ? INCREASE : DECREASE;
+    $emoji = ($variance === INCREASE) ? ':(' : ':)';
 
-// Faz a comparação de cotações e realiza a postagem
-if ($ultima_cotacao != $cotacao_anterior) {
+    $status = $options['twitterStatusFormat'];
+    $status = str_replace('{name}', $currencySettings['name'], $status);
+    $status = str_replace('{subiu/caiu}', $variance, $status);
+    $status = str_replace('{emoji}', $emoji, $status);
+    $status = str_replace('{cotacao}', number_format($quote, 2, ',',  '.'), $status);
+    $status = str_replace('{data-hora}', $now->format('H:i'), $status);
 
-    if ( $ultima_cotacao > $cotacao_anterior ) {
-        $status_content = "Dólar subiu :( - R$" . $ultima_cotacao . ' às '.$cotacao_atual_data;
-    } elseif ( $ultima_cotacao < $cotacao_anterior ) {
-        $status_content = "Dólar caiu :) - R$" . $ultima_cotacao . ' às '.$cotacao_atual_data;
-    } 
-    
-	    // Posta tweet
-	    $statues = $connection->post("statuses/update", array("status" => $status_content));
-	
-	    // Salva cotações somente se foi postado no twitter
-	    if ($connection->getLastHttpCode() == 200) {
-	        file_put_contents("cotacoes_real.txt", $cotacao_atual_com_virgula."\n", FILE_APPEND);
-	    } else {
-	        // Handle error case
-	    }       
+    if (!empty($currencySettings['twitterApiKey'])) {
+        $connection = new TwitterOAuth('CONSUMER_KEY', 'CONSUMER_SECRET', $access_token, $access_token_secret);
+        $statusUpdate = $connection->post("statuses/update", array("status" => $status));
 
+        if ($connection->getLastHttpCode() == 200) {
+            $lastQuotes[$currencySettings['currencyApiName']] = $quote;
+        }
+    }
+
+    print sprintf(
+        '%s - %s - %s%s',
+        $now->format('Y-m-d H:i:s'),
+        $currencySettings['currencyApiName'],
+        $status,
+        PHP_EOL
+    );
 }
 
-
-
-
-
-
-
-
+file_put_contents(FILE_HISTORY, json_encode($lastQuotes));

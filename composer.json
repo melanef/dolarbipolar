@@ -1,0 +1,20 @@
+{
+    "name": "amauri/dolarbipolar",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Amauri de Melo Junior",
+            "email": "amaurimelojunior@gmail.com"
+        },
+        {
+            "name": "Mario Zuany Neto",
+            "email": "mariozuany@mariozuany.com"
+        }
+    ],
+    "require": {
+        "abraham/twitteroauth": "^1.2",
+        "guzzlehttp/guzzle": "^7.0",
+        "ext-json": "*",
+        "ext-curl": "*"
+    }
+}
