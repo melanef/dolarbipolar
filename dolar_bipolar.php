@@ -12,9 +12,9 @@
  */
 
 require "vendor/autoload.php";
-require "twitteroauth/autoload.php";
 
 use Abraham\TwitterOAuth\TwitterOAuth;
+use GuzzleHttp\Client;
 
 const API_URL = 'https://free.currconv.com/api/v7/convert?q=%s&compact=ultra&apiKey=%s';
 const FILE_OPTIONS = './options.json';
@@ -25,14 +25,13 @@ const DECREASE = 'caiu';
 $now = new DateTime('now', new DateTimeZone('America/Sao_Paulo'));
 $options = json_decode(file_get_contents(FILE_OPTIONS), true);
 $lastQuotes = json_decode(file_get_contents(FILE_HISTORY), true);
-
+$client = new Client();
 foreach ($options['currencies'] as $currencySettings) {
-    $ch = curl_init(sprintf(API_URL, $currencySettings['currencyApiName'], $options['currencyApiKey']));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $result = curl_exec($ch);
-    curl_close($ch);
+    $response = $client->get(
+        sprintf(API_URL, $currencySettings['currencyApiName'], $options['currencyApiKey'])
+    );
 
-    $payload = json_decode($result, true);
+    $payload = json_decode($response->getBody()->getContents(), true);
     $quote = $payload[$currencySettings['currencyApiName']];
 
     $lastQuote = null;
@@ -40,16 +39,17 @@ foreach ($options['currencies'] as $currencySettings) {
         $lastQuote = $lastQuotes[$currencySettings['currencyApiName']];
     }
 
-    $roundedQuote = round($quote, 2, PHP_ROUND_HALF_DOWN);
-    $roundedLastQuote = round($lastQuote, 2, PHP_ROUND_HALF_DOWN);
-
+    $roundedQuote = round($quote, 2);
+    $roundedLastQuote = round($lastQuote, 2);
     if ($roundedQuote === $roundedLastQuote) {
         print sprintf(
-            '%s - %s - Sem alteração - %s - %s%s',
+            '%s - %s - Sem alteração - %s (%s) - %s (%s)<br>%s',
             $now->format('Y-m-d H:i:s'),
             $currencySettings['currencyApiName'],
             $lastQuote,
+            $roundedLastQuote,
             $quote,
+            $roundedQuote,
             PHP_EOL
         );
         continue;
