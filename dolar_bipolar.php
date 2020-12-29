@@ -54,7 +54,7 @@ foreach ($options['currencies'] as $currencySettings) {
     }
 
     $variance = ($quote > $lastQuote) ? INCREASE : DECREASE;
-    $emoji = ($variance === INCREASE) ? ':(' : ':)';
+    $emoji = ($variance === INCREASE) ? '☹️️' : '☺️';
 
     $day = new DateTime();
 
@@ -69,8 +69,10 @@ foreach ($options['currencies'] as $currencySettings) {
     }
 
     $dailyChange = null;
+    $dailyChangeAbsolute = 0;
     if (!empty($lastQuotes['daily'][$currencySettings['currencyApiName']]['closingValue'])) {
         $dailyChange = $quote / $lastQuotes['daily'][$currencySettings['currencyApiName']]['closingValue'];
+        $dailyChangeAbsolute = abs($quote - $lastQuotes['daily'][$currencySettings['currencyApiName']]['closingValue']);
     }
 
     $status = $options['twitterStatusFormat'];
@@ -89,15 +91,14 @@ foreach ($options['currencies'] as $currencySettings) {
     $status = str_replace('{data-hora}', $now->format('H:i'), $status);
 
     if (empty($dailyChange)) {
-        $status = str_replace('{data-hora}', '', $status);
+        $status = str_replace('{variacao}', '', $status);
     } else {
         $status = str_replace(
             '{variacao}',
             sprintf(
-                'Variação %s %s%s%%',
+                'Variação %s %s',
                 ($dailyChange > 1 ? '📈' : '📉'),
-                ($dailyChange > 1 ? '+' : ''),
-                number_format(($dailyChange - 1) * 100, 2, ',', '.')
+                renderDailyChange($dailyChange, $dailyChangeAbsolute)
             ),
             $status
         );
@@ -110,7 +111,7 @@ foreach ($options['currencies'] as $currencySettings) {
             $currencySettings['twitterApiKey'],
             $currencySettings['twitterApiSecret']
         );
-        $statusUpdate = $connection->post("statuses/update", array("status" => $status));
+        $statusUpdate = $connection->post("statuses/update", ['status' => $status]);
 
         if ($connection->getLastHttpCode() == 200) {
             $lastQuotes[$currencySettings['currencyApiName']] = $quote;
@@ -129,3 +130,27 @@ foreach ($options['currencies'] as $currencySettings) {
 }
 
 file_put_contents(FILE_HISTORY, json_encode($lastQuotes, JSON_PRETTY_PRINT));
+
+/**
+ * @param float $change
+ * @param float $absoluteChange
+ *
+ * @return string
+ */
+function renderDailyChange(float $change, float $absoluteChange): string
+{
+    $change = ($change - 1) * 100;
+
+    $signal = '+';
+    if ($change < 0) {
+        $signal = '-';
+        $change = abs($change);
+    }
+
+    return sprintf(
+        '%s%s%% (R$ %s)',
+        $signal,
+        number_format($change, 2, ',', '.'),
+        number_format($absoluteChange, 2, ',', '.')
+    );
+}
