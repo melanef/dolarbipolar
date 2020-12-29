@@ -95,7 +95,7 @@ foreach ($options['currencies'] as $currencySettings) {
             '{variacao}',
             sprintf(
                 'Variação %s %s%s%%',
-                ($dailyChange > 1 ? '\u{1F4C8}' : '\u{1F4C9}'),
+                ($dailyChange > 1 ? '📈' : '📉'),
                 ($dailyChange > 1 ? '+' : ''),
                 number_format(($dailyChange - 1) * 100, 2, ',', '.')
             ),
