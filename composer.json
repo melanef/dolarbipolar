@@ -11,6 +11,11 @@
             "email": "mariozuany@mariozuany.com"
         }
     ],
+    "autoload": {
+        "psr-4": {
+            "DolarBipolar\\": "."
+        }
+    },
     "require": {
         "abraham/twitteroauth": "^1.2",
         "guzzlehttp/guzzle": "^7.0",

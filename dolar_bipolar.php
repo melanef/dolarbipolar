@@ -14,9 +14,9 @@
 require "vendor/autoload.php";
 
 use Abraham\TwitterOAuth\TwitterOAuth;
+use DolarBipolar\Providers\CurrencyConverterApi;
 use GuzzleHttp\Client;
 
-const API_URL = 'https://free.currconv.com/api/v7/convert?q=%s&compact=ultra&apiKey=%s';
 const FILE_OPTIONS = './options.json';
 const FILE_HISTORY = './history.json';
 const INCREASE = 'subiu';
@@ -25,22 +25,20 @@ const DECREASE = 'caiu';
 $now = new DateTime('now', new DateTimeZone('America/Sao_Paulo'));
 $options = json_decode(file_get_contents(FILE_OPTIONS), true);
 $lastQuotes = json_decode(file_get_contents(FILE_HISTORY), true);
-$client = new Client();
-foreach ($options['currencies'] as $currencySettings) {
-    $response = $client->get(
-        sprintf(API_URL, $currencySettings['currencyApiName'], $options['currencyApiKey'])
-    );
+$provider = new CurrencyConverterApi($options['keys']['currencyconverterapi'], new Client());
 
-    $payload = json_decode($response->getBody()->getContents(), true);
-    $quote = $payload[$currencySettings['currencyApiName']];
+foreach ($options['currencies'] as $currencySettings) {
+    $quote = $provider->getQuote($currencySettings['currencyApiName'], $currencySettings['batch']);
 
     $lastQuote = null;
     if (!empty($lastQuotes[$currencySettings['currencyApiName']])) {
         $lastQuote = $lastQuotes[$currencySettings['currencyApiName']];
+    } elseif (!empty($lastQuotes[$currencySettings['currencyApiName'].'_BRL'])) {
+        $lastQuote = $lastQuotes[$currencySettings['currencyApiName'].'_BRL'];
     }
 
-    $roundedQuote = round($quote, 2);
-    $roundedLastQuote = round($lastQuote, 2);
+    $roundedQuote = round($quote, $currencySettings['precision']);
+    $roundedLastQuote = round($lastQuote, $currencySettings['precision']);
     if ($roundedQuote === $roundedLastQuote) {
         print sprintf(
             '%s - %s - Sem alteração - %s (%s) - %s (%s)<br>%s',
@@ -58,12 +56,50 @@ foreach ($options['currencies'] as $currencySettings) {
     $variance = ($quote > $lastQuote) ? INCREASE : DECREASE;
     $emoji = ($variance === INCREASE) ? ':(' : ':)';
 
+    $day = new DateTime();
+
+    if (empty($lastQuotes['daily'][$currencySettings['currencyApiName']]) || $lastQuotes['daily'][$currencySettings['currencyApiName']]['date'] != $day->format('Ymd')) {
+        $lastQuotes['daily'][$currencySettings['currencyApiName']] = [
+            'date' => $day->format('Ymd'),
+            'value' => $quote,
+            'closingValue' => $lastQuote,
+        ];
+    } else {
+        $lastQuotes['daily'][$currencySettings['currencyApiName']]['value'] = $quote;
+    }
+
+    $dailyChange = null;
+    if (!empty($lastQuotes['daily'][$currencySettings['currencyApiName']]['closingValue'])) {
+        $dailyChange = $quote / $lastQuotes['daily'][$currencySettings['currencyApiName']]['closingValue'];
+    }
+
     $status = $options['twitterStatusFormat'];
     $status = str_replace('{name}', $currencySettings['name'], $status);
     $status = str_replace('{subiu/caiu}', $variance, $status);
     $status = str_replace('{emoji}', $emoji, $status);
-    $status = str_replace('{cotacao}', number_format($roundedQuote, 2, ',',  '.'), $status);
+    $status = str_replace(
+        '{cotacao}',
+        sprintf(
+            '%s%s',
+            number_format($roundedQuote, $currencySettings['precision'], ',', '.'),
+            $currencySettings['batch'] == 1 ? '' : sprintf(' (lote de %d)', $currencySettings['batch'])
+        ),
+        $status
+    );
     $status = str_replace('{data-hora}', $now->format('H:i'), $status);
+
+    if (empty($dailyChange)) {
+        $status = str_replace('{data-hora}', '', $status);
+    } else {
+        $status = str_replace(
+            '{variacao}',
+            sprintf(
+                ' - Variação no dia: %s%%',
+                number_format(($dailyChange - 1) * 100, 2, ',', '.')
+            ),
+            $status
+        );
+    }
 
     if (!empty($currencySettings['twitterApiKey'])) {
         $connection = new TwitterOAuth(
@@ -72,17 +108,17 @@ foreach ($options['currencies'] as $currencySettings) {
             $currencySettings['twitterApiKey'],
             $currencySettings['twitterApiSecret']
         );
-        $statusUpdate = $connection->post("statuses/update", array("status" => $status));
+        //$statusUpdate = $connection->post("statuses/update", array("status" => $status));
 
-        if ($connection->getLastHttpCode() == 200) {
-            $lastQuotes[$currencySettings['currencyApiName']] = $quote;
-        } else {
-            print sprintf("Erro: %s%s", json_encode($connection->getLastBody()), PHP_EOL);
-        }
+        //if ($connection->getLastHttpCode() == 200) {
+        //    $lastQuotes[$currencySettings['currencyApiName']] = $quote;
+        //} else {
+        //    print sprintf("Erro: %s<br>%s", json_encode($connection->getLastBody()), PHP_EOL);
+        //}
     }
 
     print sprintf(
-        '%s - %s - Corpo: "%s"%s',
+        '%s - %s - Corpo: "%s"<br>%s',
         $now->format('Y-m-d H:i:s'),
         $currencySettings['currencyApiName'],
         $status,
