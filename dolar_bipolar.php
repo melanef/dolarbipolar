@@ -108,13 +108,13 @@ foreach ($options['currencies'] as $currencySettings) {
             $currencySettings['twitterApiKey'],
             $currencySettings['twitterApiSecret']
         );
-        //$statusUpdate = $connection->post("statuses/update", array("status" => $status));
+        $statusUpdate = $connection->post("statuses/update", array("status" => $status));
 
-        //if ($connection->getLastHttpCode() == 200) {
-        //    $lastQuotes[$currencySettings['currencyApiName']] = $quote;
-        //} else {
-        //    print sprintf("Erro: %s<br>%s", json_encode($connection->getLastBody()), PHP_EOL);
-        //}
+        if ($connection->getLastHttpCode() == 200) {
+            $lastQuotes[$currencySettings['currencyApiName']] = $quote;
+        } else {
+            print sprintf("Erro: %s<br>%s", json_encode($connection->getLastBody()), PHP_EOL);
+        }
     }
 
     print sprintf(
