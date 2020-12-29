@@ -94,7 +94,9 @@ foreach ($options['currencies'] as $currencySettings) {
         $status = str_replace(
             '{variacao}',
             sprintf(
-                ' - Variação no dia: %s%%',
+                'Variação %s %s%s%%',
+                ($dailyChange > 1 ? '\u{1F4C8}' : '\u{1F4C9}'),
+                ($dailyChange > 1 ? '+' : ''),
                 number_format(($dailyChange - 1) * 100, 2, ',', '.')
             ),
             $status
@@ -126,4 +128,4 @@ foreach ($options['currencies'] as $currencySettings) {
     );
 }
 
-file_put_contents(FILE_HISTORY, json_encode($lastQuotes));
+file_put_contents(FILE_HISTORY, json_encode($lastQuotes, JSON_PRETTY_PRINT));
