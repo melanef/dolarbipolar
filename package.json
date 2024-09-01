@@ -1,0 +1,26 @@
+{
+  "name": "dolarbipolar",
+  "version": "1.0.0",
+  "description": "Criado por André Fantin, o perfil @DolarBipolar, faz o acompanhamento da variação da cotação do Dólar durante o dia. As postagens começaram sendo postadas manualmente, mas hoje possui uma programação que faz atualizações automáticas a cada meia hora. Criei um Bot que utiliza o serviço de cotação da moeda fornecida pelo UOL e realiza postagens automáticas via API do Twitter.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules src/index.ts",
+    "prod": "tsc && node dist/index.js"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.6.20",
+    "axios": "^1.7.7",
+    "cron": "^3.1.0",
+    "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.1.3",
+    "dotenv": "^16.3.1",
+    "process": "^0.11.10",
+    "twitter-api-v2": "^1.17.2"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
