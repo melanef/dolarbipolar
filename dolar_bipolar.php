@@ -16,11 +16,13 @@ require "vendor/autoload.php";
 use Abraham\TwitterOAuth\TwitterOAuth;
 use DolarBipolar\Providers\CurrencyConverterApi;
 use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\Request;
 
 const FILE_OPTIONS = './options.json';
 const FILE_HISTORY = './history.json';
 const INCREASE = 'subiu';
 const DECREASE = 'caiu';
+const BLUESKY_API_URL = 'https://bsky.social/xrpc';
 
 $now = new DateTime('now', new DateTimeZone('America/Sao_Paulo'));
 $options = json_decode(file_get_contents(FILE_OPTIONS), true);
@@ -118,6 +120,40 @@ foreach ($options['currencies'] as $currencySettings) {
         } else {
             print sprintf("Erro: %s<br>%s", json_encode($connection->getLastBody()), PHP_EOL);
         }
+    }
+
+    if (!empty($currencySettings['blueskyUser']) && !empty($currencySettings['blueskyPassword'])) {
+        $httpClient = new Client();
+        $authData = json_encode([
+            "identifier" => $currencySettings['blueskyUser'],
+            "password" => $currencySettings['blueskyPassword']
+        ]);
+        $requestToken = new Request(
+            'POST', 
+            BLUESKY_API_URL . '/com.atproto.server.createSession',
+            ['Accept' => 'application/json'],
+            $authData
+        );
+
+        $response = $httpClient->sendRequest($requestToken);
+        $tokenPayload = json_decode($response->getBody()->getContents(), true);
+
+        $postData = [
+            'repo' => $tokenPayload['did'],
+            'collection' => "app.bsky.feed.post",
+            'record' => [
+                '$type' => 'app.bsky.feed.post',
+                'text' => $status,
+                'createdAt' => (new DateTime())->format(DateTime::ATOM),
+            ]
+        ];
+        $requestPost = new Request(
+            'POST', 
+            BLUESKY_API_URL . '/com.atproto.server.createRecord',
+            ['Authorization' => "Bearer ". $tokenPayload['token']],
+            $postData
+        );
+       $httpClient->sendRequest($requestToken);
     }
 
     print sprintf(
