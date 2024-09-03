@@ -15,6 +15,10 @@ require "vendor/autoload.php";
 
 use Abraham\TwitterOAuth\TwitterOAuth;
 use DolarBipolar\Providers\CurrencyConverterApi;
+use DolarBipolar\Publishers\BlueSkyPublisher;
+use DolarBipolar\Publishers\TwitterPublisher;
+use DolarBipolar\ValueObjects\BlueSkyCredentials;
+use DolarBipolar\ValueObjects\TwitterCredentials;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
 
@@ -22,7 +26,6 @@ const FILE_OPTIONS = './options.json';
 const FILE_HISTORY = './history.json';
 const INCREASE = 'subiu';
 const DECREASE = 'caiu';
-const BLUESKY_API_URL = 'https://bsky.social/xrpc';
 
 $now = new DateTime('now', new DateTimeZone('America/Sao_Paulo'));
 $options = json_decode(file_get_contents(FILE_OPTIONS), true);
@@ -107,53 +110,37 @@ foreach ($options['currencies'] as $currencySettings) {
     }
 
     if (!empty($currencySettings['twitterApiKey'])) {
-        $connection = new TwitterOAuth(
-            $currencySettings['consumerApiKey'],
-            $currencySettings['consumerApiSecret'],
-            $currencySettings['twitterApiKey'],
-            $currencySettings['twitterApiSecret']
-        );
-        $statusUpdate = $connection->post("statuses/update", ['status' => $status]);
+        try {
+            $publisher = new TwitterPublisher(
+                new TwitterCredentials(
+                    $currencySettings['currencyApiName'],
+                    $currencySettings['consumerApiKey'],
+                    $currencySettings['consumerApiSecret'],
+                    $currencySettings['twitterApiKey'],
+                    $currencySettings['twitterApiSecret']
+                )
+            );
 
-        if ($connection->getLastHttpCode() == 200) {
-            $lastQuotes[$currencySettings['currencyApiName']] = $quote;
-        } else {
-            print sprintf("Erro: %s<br>%s", json_encode($connection->getLastBody()), PHP_EOL);
+            $publisher->publish($status);
+        } catch (Exception $e) {
+            print sprintf("Erro: %s<br>%s", $e->getMessage(), PHP_EOL);
         }
     }
 
     if (!empty($currencySettings['blueskyUser']) && !empty($currencySettings['blueskyPassword'])) {
-        $httpClient = new Client();
-        $authData = json_encode([
-            "identifier" => $currencySettings['blueskyUser'],
-            "password" => $currencySettings['blueskyPassword']
-        ]);
-        $requestToken = new Request(
-            'POST', 
-            BLUESKY_API_URL . '/com.atproto.server.createSession',
-            ['Accept' => 'application/json'],
-            $authData
-        );
+        try {
+            $publisher = new BlueskyPublisher(
+                new BlueskyCredentials(
+                    $currencySettings['currencyApiName'],
+                    $currencySettings['blueskyUser'],
+                    $currencySettings['blueskyPassword']
+                )
+            );
 
-        $response = $httpClient->sendRequest($requestToken);
-        $tokenPayload = json_decode($response->getBody()->getContents(), true);
-
-        $postData = [
-            'repo' => $tokenPayload['did'],
-            'collection' => "app.bsky.feed.post",
-            'record' => [
-                '$type' => 'app.bsky.feed.post',
-                'text' => $status,
-                'createdAt' => (new DateTime())->format(DateTime::ATOM),
-            ]
-        ];
-        $requestPost = new Request(
-            'POST', 
-            BLUESKY_API_URL . '/com.atproto.server.createRecord',
-            ['Authorization' => "Bearer ". $tokenPayload['token']],
-            $postData
-        );
-       $httpClient->sendRequest($requestToken);
+            $publisher->publish($status);
+        } catch (Exception $e) {
+            print sprintf("Erro: %s<br>%s", $e->getMessage(), PHP_EOL);
+        }
     }
 
     print sprintf(
