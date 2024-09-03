@@ -109,21 +109,24 @@ foreach ($options['currencies'] as $currencySettings) {
         );
     }
 
-    if (!empty($currencySettings['twitterApiKey'])) {
-        try {
-            $publisher = new TwitterPublisher(
-                new TwitterCredentials(
-                    $currencySettings['currencyApiName'],
-                    $currencySettings['consumerApiKey'],
-                    $currencySettings['consumerApiSecret'],
-                    $currencySettings['twitterApiKey'],
-                    $currencySettings['twitterApiSecret']
-                )
-            );
+    $updated = false;
+    if (!empty($currencySettings['twitterKeys']) && is_array($currencySettings['twitterKeys'])) {
+        foreach ($currencySettings['twitterKeys'] as $keys) {
+            try {
+                $publisher = new TwitterPublisher(
+                    new TwitterCredentials(
+                        $keys['currencyApiName'],
+                        $keys['consumerApiKey'],
+                        $keys['consumerApiSecret'],
+                        $keys['twitterApiKey'],
+                        $keys['twitterApiSecret']
+                    )
+                );
 
-            $publisher->publish($status);
-        } catch (Exception $e) {
-            print sprintf("Erro: %s<br>%s", $e->getMessage(), PHP_EOL);
+                $publisher->publish($status);
+            } catch (Exception $e) {
+                print sprintf("Erro: %s<br>%s", $e->getMessage(), PHP_EOL);
+            }
         }
     }
 
@@ -138,9 +141,14 @@ foreach ($options['currencies'] as $currencySettings) {
             );
 
             $publisher->publish($status);
+            $updated = true;
         } catch (Exception $e) {
             print sprintf("Erro: %s<br>%s", $e->getMessage(), PHP_EOL);
         }
+    }
+
+    if ($updated) {
+        $lastQuotes[$currencySettings['currencyApiName']] = $quote;
     }
 
     print sprintf(
