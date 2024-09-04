@@ -7,7 +7,6 @@ namespace DolarBipolar\ValueObjects;
 class BlueSkyCredentials
 {
     public function __construct(
-        public readonly string $name,
         public readonly string $user,
         public readonly string $password
     ) {}

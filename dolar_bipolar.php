@@ -11,6 +11,9 @@
  * Time: 02:10
  */
 
+error_reporting(E_ALL);
+ini_set("display_errors", 1);
+
 require "vendor/autoload.php";
 
 use Abraham\TwitterOAuth\TwitterOAuth;
@@ -115,7 +118,6 @@ foreach ($options['currencies'] as $currencySettings) {
             try {
                 $publisher = new TwitterPublisher(
                     new TwitterCredentials(
-                        $keys['currencyApiName'],
                         $keys['consumerApiKey'],
                         $keys['consumerApiSecret'],
                         $keys['twitterApiKey'],
@@ -134,7 +136,6 @@ foreach ($options['currencies'] as $currencySettings) {
         try {
             $publisher = new BlueskyPublisher(
                 new BlueskyCredentials(
-                    $currencySettings['currencyApiName'],
                     $currencySettings['blueskyUser'],
                     $currencySettings['blueskyPassword']
                 )

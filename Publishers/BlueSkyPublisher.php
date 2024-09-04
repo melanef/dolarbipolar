@@ -13,14 +13,12 @@ class BlueSkyPublisher implements Publisher
 {
     private const BLUESKY_API_URL = 'https://bsky.social/xrpc';
 
-    private string $connectionName;
     private Client $client;
 
     private array $token;
 
     public function __construct(BlueSkyCredentials $credentials)
     {
-        $this->connectionName = $credentials->name;
         $this->client = new Client();
         $this->init($credentials);
     }
@@ -32,7 +30,6 @@ class BlueSkyPublisher implements Publisher
             'repo' => $this->token['did'],
             'collection' => 'app.bsky.feed.post',
             'record' => [
-                '$type' => 'app.bsky.feed.post',
                 'text' => $status,
                 'createdAt' => (new DateTime())->format(DateTime::ATOM),
             ],
@@ -40,9 +37,12 @@ class BlueSkyPublisher implements Publisher
 
         $request = new Request(
             'POST',
-            self::BLUESKY_API_URL . '/com.atproto.server.createRecord',
-            ['Authorization' => "Bearer ". $this->token['token']],
-            $payload
+            self::BLUESKY_API_URL . '/com.atproto.repo.createRecord',
+            [
+                'Content-Type' => 'application/json',
+                'Authorization' => "Bearer ". $this->token['accessJwt'],
+            ],
+            json_encode($payload)
         );
 
         $this->client->send($request);
@@ -58,7 +58,10 @@ class BlueSkyPublisher implements Publisher
         $request = new Request(
             'POST',
             self::BLUESKY_API_URL . '/com.atproto.server.createSession',
-            ['Accept' => 'application/json'],
+            [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ],
             json_encode($payload)
         );
 
