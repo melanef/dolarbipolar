@@ -12,19 +12,26 @@ class TwitterPublisher implements Publisher
 {
     private TwitterOAuth $connection;
 
-    public function __construct(TwitterCredentials $credentials)
-    {
+    public function __construct(
+        TwitterCredentials $credentials,
+        private readonly bool $isDebugMode = false,
+    ) {
         $this->connection = new TwitterOAuth(
-            $credentials->consumerApiKey,
-            $credentials->consumerApiSecret,
-            $credentials->twitterApiKey,
-            $credentials->consumerApiSecret
+            $credentials->consumerKey,
+            $credentials->consumerSecret,
+            $credentials->accessToken,
+            $credentials->accessTokenSecret,
         );
         $this->connection->setApiVersion('2');
     }
 
     public function publish(string $status): void
     {
+        if ($this->isDebugMode) {
+            print sprintf("DEBUG MODE - TWEET: %s%s<br>", $status, PHP_EOL);
+            return;
+        }
+
         $this->connection->post('tweets', ['text' => $status], true);
 
         if ($this->connection->getLastHttpCode() !== 201) {

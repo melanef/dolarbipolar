@@ -16,14 +16,15 @@ ini_set("display_errors", 1);
 
 require "vendor/autoload.php";
 
-use Abraham\TwitterOAuth\TwitterOAuth;
+use DolarBipolar\Enums\Mode;
+use DolarBipolar\Enums\Provider;
 use DolarBipolar\Providers\CurrencyConverterApi;
+use DolarBipolar\Providers\WiseScrapper;
 use DolarBipolar\Publishers\BlueSkyPublisher;
 use DolarBipolar\Publishers\TwitterPublisher;
 use DolarBipolar\ValueObjects\BlueSkyCredentials;
 use DolarBipolar\ValueObjects\TwitterCredentials;
 use GuzzleHttp\Client;
-use GuzzleHttp\Psr7\Request;
 
 const FILE_OPTIONS = './options.json';
 const FILE_HISTORY = './history.json';
@@ -31,12 +32,38 @@ const INCREASE = 'subiu';
 const DECREASE = 'caiu';
 
 $now = new DateTime('now', new DateTimeZone('America/Sao_Paulo'));
-$options = json_decode(file_get_contents(FILE_OPTIONS), true);
-$lastQuotes = json_decode(file_get_contents(FILE_HISTORY), true);
-$provider = new CurrencyConverterApi($options['keys']['currencyconverterapi'], new Client());
+$options = json_decode(file_get_contents(FILE_OPTIONS), true, flags: JSON_THROW_ON_ERROR);
+$lastQuotes = json_decode(file_get_contents(FILE_HISTORY), true, flags: JSON_THROW_ON_ERROR);
+
+$mode = Mode::fromOptions($options);
+
+$providers = [
+    Provider::WISE_SCRAPPER->value => new WiseScrapper(new Client()),
+];
+foreach ($options['keys'] as $name => $key) {
+    $provider = Provider::tryFrom($name);
+    $providers[$name] = match ($provider) {
+        Provider::CURRENCY_CONVERTER_API => new CurrencyConverterApi($options['keys'][$name], new Client()),
+        default => null,
+    };
+}
 
 foreach ($options['currencies'] as $currencySettings) {
-    $quote = $provider->getQuote($currencySettings['currencyApiName'], $currencySettings['batch']);
+    if (!hasPublisherConfig($currencySettings)) {
+        print sprintf("%s: Pulando por falta de credenciais de publicação (sem Twitter e sem Bluesky)<br>%s", $currencySettings['name'], PHP_EOL);
+        continue;
+    }
+
+    if (!array_key_exists('provider', $currencySettings) || !$currencySettings['provider']) {
+        print sprintf("%s: Pulando por falta de credenciais de fonte<br>%s", $currencySettings['name'], PHP_EOL);
+        continue;
+    }
+
+    $quote = $providers[$currencySettings['provider']]?->getQuote($currencySettings['currencyApiName'], $currencySettings['batch']);
+    if (!$quote) {
+        print sprintf("%s: Valor nulo retornado da fonte<br>%s", $currencySettings['name'], PHP_EOL);
+        continue;
+    }
 
     $lastQuote = null;
     if (!empty($lastQuotes[$currencySettings['currencyApiName']])) {
@@ -47,7 +74,7 @@ foreach ($options['currencies'] as $currencySettings) {
 
     $roundedQuote = round($quote, $currencySettings['precision']);
     $roundedLastQuote = round($lastQuote, $currencySettings['precision']);
-    if ($roundedQuote === $roundedLastQuote) {
+    if ($mode !== Mode::FORCE && $roundedQuote === $roundedLastQuote) {
         print sprintf(
             '%s - %s - Sem alteração - %s (%s) - %s (%s)<br>%s',
             $now->format('Y-m-d H:i:s'),
@@ -118,11 +145,12 @@ foreach ($options['currencies'] as $currencySettings) {
             try {
                 $publisher = new TwitterPublisher(
                     new TwitterCredentials(
-                        $keys['consumerApiKey'],
-                        $keys['consumerApiSecret'],
-                        $keys['twitterApiKey'],
-                        $keys['twitterApiSecret']
-                    )
+                        $keys['consumerKey'],
+                        $keys['consumerSecret'],
+                        $keys['accessToken'],
+                        $keys['accessTokenSecret']
+                    ),
+                    $mode === Mode::DEBUG,
                 );
 
                 $publisher->publish($status);
@@ -138,7 +166,8 @@ foreach ($options['currencies'] as $currencySettings) {
                 new BlueskyCredentials(
                     $currencySettings['blueskyUser'],
                     $currencySettings['blueskyPassword']
-                )
+                ),
+                $mode === Mode::DEBUG,
             );
 
             $publisher->publish($status);
@@ -185,4 +214,20 @@ function renderDailyChange(float $change, float $absoluteChange): string
         number_format($change, 2, ',', '.'),
         number_format($absoluteChange, 2, ',', '.')
     );
+}
+
+function hasPublisherConfig(array $currencySettings): bool
+{
+    if (!empty($currencySettings['twitterKeys']) && is_array($currencySettings['twitterKeys'])) {
+        return true;
+    }
+
+    if (
+        !empty($currencySettings['blueskyUser']) && is_array($currencySettings['blueskyUser'])
+        && !empty($currencySettings['blueskyPassword']) && is_array($currencySettings['blueskyPassword'])
+    ) {
+        return true;
+    }
+
+    return false;
 }

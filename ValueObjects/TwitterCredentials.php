@@ -7,9 +7,9 @@ namespace DolarBipolar\ValueObjects;
 class TwitterCredentials
 {
     public function __construct(
-        public readonly string $consumerApiKey,
-        public readonly string $consumerApiSecret,
-        public readonly string $twitterApiKey,
-        public readonly string $twitterApiSecret
+        public readonly string $consumerKey,
+        public readonly string $consumerSecret,
+        public readonly string $accessToken,
+        public readonly string $accessTokenSecret,
     ) {}
 }

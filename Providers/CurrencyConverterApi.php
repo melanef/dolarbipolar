@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace DolarBipolar\Providers;
 
 use GuzzleHttp\Psr7\Request;
@@ -9,33 +11,18 @@ class CurrencyConverterApi implements ApiProvider
 {
     private const API_URL = 'https://api.currconv.com/api/v7/convert?q=%s_BRL&compact=ultra&apiKey=%s';
 
-    /** @var ClientInterface */
-    private $httpClient;
-
-    /** @var string */
-    private $key;
-
-    /**
-     * CurrConv constructor.
-     *
-     * @param string          $key
-     * @param ClientInterface $client
-     */
-    public function __construct(string $key, ClientInterface $client)
-    {
-        $this->key = $key;
-        $this->httpClient = $client;
+    public function __construct(
+        private readonly string $key,
+        private readonly ClientInterface $httpClient,
+    ) {
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function getQuote(string $currency, int $batch): float
+    public function getQuote(string $currency, int $batch): ?float
     {
         $request = new Request('GET', sprintf(self::API_URL, $currency, $this->key));
 
         $response = $this->httpClient->sendRequest($request);
-        $payload = json_decode($response->getBody()->getContents(), true);
+        $payload = json_decode($response->getBody()->getContents(), true, flags: JSON_THROW_ON_ERROR);
 
         return $payload[$currency.'_BRL'] * $batch;
     }

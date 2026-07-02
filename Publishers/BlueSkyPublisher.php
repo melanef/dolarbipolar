@@ -17,8 +17,10 @@ class BlueSkyPublisher implements Publisher
 
     private array $token;
 
-    public function __construct(BlueSkyCredentials $credentials)
-    {
+    public function __construct(
+        BlueSkyCredentials $credentials,
+        private readonly bool $isDebugMode = false,
+    ) {
         $this->client = new Client();
         $this->init($credentials);
     }
@@ -26,6 +28,11 @@ class BlueSkyPublisher implements Publisher
 
     public function publish(string $status): void
     {
+        if ($this->isDebugMode) {
+            print sprintf("DEBUG MODE - BSKY POST: %s%s<br>", $status, PHP_EOL);
+            return;
+        }
+
         $payload = [
             'repo' => $this->token['did'],
             'collection' => 'app.bsky.feed.post',

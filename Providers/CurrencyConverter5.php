@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace DolarBipolar\Providers;
 
 use GuzzleHttp\Psr7\Request;
@@ -15,29 +17,16 @@ class CurrencyConverter5 implements ApiProvider
 
     private const HOST = 'currency-converter5.p.rapidapi.com';
 
-    /** @var ClientInterface */
-    private $httpClient;
-
-    /** @var string */
-    private $key;
-
-    /**
-     * CurrConv constructor.
-     *
-     * @param string          $key
-     * @param ClientInterface $client
-     */
-    public function __construct(string $key, ClientInterface $client)
-    {
-        $this->key = $key;
-        $this->httpClient = $client;
+    public function __construct(
+        private readonly string $key,
+        private readonly ClientInterface $httpClient,
+    ) {
     }
 
     /**
-     * @inheritDoc
      * @throws ClientExceptionInterface
      */
-    public function getQuote(string $currency, int $batch): float
+    public function getQuote(string $currency, int $batch): ?float
     {
         $request = new Request(
             'GET',
