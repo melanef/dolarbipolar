@@ -32,7 +32,7 @@ class TwitterPublisher implements Publisher
             return;
         }
 
-        $this->connection->post('tweets', ['text' => $status], true);
+        $this->connection->post('statuses/update', ['status' => $status]);
 
         if ($this->connection->getLastHttpCode() !== 201) {
             throw new RuntimeException(json_encode($this->connection->getLastBody()));
